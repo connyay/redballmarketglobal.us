@@ -1,6 +1,6 @@
 # Red Ball Market Global (RBMG) - Hold Music Hotline
 
-A fictional company website with an infinite hold music phone line, powered by Cloudflare Workers, D1 Database, and Twilio. Features privacy-preserving call analytics with CRC32 hashed phone numbers.
+A fictional company website with an infinite hold music phone line, powered by Cloudflare Workers, D1 Database, and Twilio. Features privacy-preserving call analytics with HMAC-SHA256 hashed phone numbers.
 
 ## What is this?
 
@@ -10,7 +10,7 @@ This is a parody project that creates a professional-looking corporate website f
 
 - **🎭 Fictional Corporate Website**: Replica of the RBMG website with professional design
 - **📞 Twilio Integration**: Real phone number that plays infinite hold music
-- **🔒 Privacy-Preserving Analytics**: Phone numbers are hashed using CRC32 - never stored in plain text
+- **🔒 Privacy-Preserving Analytics**: Phone numbers are hashed using HMAC-SHA256 with secret key - never stored in plain text
 - **📊 Call Tracking**:
   - Longest single hold time
   - Most persistent caller (most calls)
@@ -26,7 +26,8 @@ This is a parody project that creates a professional-looking corporate website f
 
 Phone numbers are **never** stored in the database. Instead:
 
-- Full number is hashed with CRC32 for unique identification
+- Full number is hashed with HMAC-SHA256 using a secret key for unique identification
+- Rainbow table attacks are prevented by the secret key
 - Display shows area code + hash: `(224) A3B4`
 - Geographic data (city/state) is preserved from Twilio
 - See [PRIVACY.md](PRIVACY.md) for full details
@@ -74,19 +75,34 @@ rbmg/
    npm install
    ```
 
-2. **Apply database migrations locally**
+2. **Set up environment variables**
+
+   Create a `.dev.vars` file (don't commit this):
+
+   ```bash
+   # Generate a secret key
+   openssl rand -hex 32
+   ```
+
+   Add to `.dev.vars`:
+
+   ```
+   PHONE_HASH_SECRET=your_generated_secret_here
+   ```
+
+3. **Apply database migrations locally**
 
    ```bash
    npm run seedLocalD1
    ```
 
-3. **Start local dev server**
+4. **Start local dev server**
 
    ```bash
    npm run dev
    ```
 
-4. **Visit** `http://localhost:8787` to see the website
+5. **Visit** `http://localhost:8787` to see the website
 
 ### Deployment
 
@@ -105,6 +121,10 @@ npm run deploy
 
 # Apply migrations to production
 npm run predeploy
+
+# Set phone hash secret (REQUIRED)
+openssl rand -hex 32  # Generate a secret
+wrangler secret put PHONE_HASH_SECRET
 
 # Set Twilio Auth Token for request validation (recommended)
 wrangler secret put TWILIO_AUTH_TOKEN
@@ -135,8 +155,8 @@ wrangler secret put WORKER_URL
 CREATE TABLE calls (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     call_sid TEXT UNIQUE NOT NULL,
-    from_number TEXT NOT NULL,         -- CRC32 hash
-    from_number_hash TEXT,             -- CRC32 hash (duplicate for views)
+    from_number TEXT NOT NULL,         -- HMAC-SHA256 hash
+    from_number_hash TEXT,             -- HMAC-SHA256 hash (duplicate for views)
     from_number_display TEXT,          -- Display format: (224) A3B4
     from_area_code TEXT,               -- First 3 digits
     to_number TEXT,                    -- Your Twilio number
@@ -203,7 +223,8 @@ npm run cf-typegen   # Generate TypeScript types
 ## Security & Privacy
 
 - **Request Validation**: Twilio webhook requests are validated using HMAC-SHA1 signatures (when `TWILIO_AUTH_TOKEN` is set)
-- **Phone Number Privacy**: Phone numbers are hashed with CRC32 before storage
+- **Phone Number Privacy**: Phone numbers are hashed with HMAC-SHA256 using a secret key before storage
+- **Rainbow Table Resistant**: Secret key prevents pre-computed rainbow table attacks
 - **No PII**: No personally identifiable information is stored in plain text
 - **Geographic Data**: City/state/country from Twilio is preserved for analytics
 - **GDPR/CCPA**: Suitable for compliance with privacy regulations

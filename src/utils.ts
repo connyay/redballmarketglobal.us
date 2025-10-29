@@ -37,27 +37,25 @@ export async function validateTwilioSignature(
     return base64Signature === signature;
 }
 
-// Simple CRC32 implementation for phone number hashing
-function crc32(str: string): string {
-    let crc = 0 ^ (-1);
-    for (let i = 0; i < str.length; i++) {
-        crc = (crc >>> 8) ^ crc32Table[(crc ^ str.charCodeAt(i)) & 0xFF];
-    }
-    return ((crc ^ (-1)) >>> 0).toString(16).padStart(8, '0');
-}
+// HMAC-SHA256 implementation for secure phone number hashing
+// This prevents rainbow table attacks by using a secret key
+async function hmacHash(str: string, secret: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(str);
 
-// CRC32 lookup table
-const crc32Table = (() => {
-    const table: number[] = [];
-    for (let i = 0; i < 256; i++) {
-        let c = i;
-        for (let j = 0; j < 8; j++) {
-            c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-        }
-        table[i] = c;
-    }
-    return table;
-})();
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', key, messageData);
+    const hashArray = Array.from(new Uint8Array(signature));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 // Structure for storing phone number data
 export interface PhoneNumberData {
@@ -67,7 +65,8 @@ export interface PhoneNumberData {
 }
 
 // Process phone number for secure storage
-export function processPhoneNumber(phoneNumber: string | null): PhoneNumberData {
+// Uses HMAC-SHA256 with a secret key to prevent rainbow table attacks
+export async function processPhoneNumber(phoneNumber: string | null, secret: string): Promise<PhoneNumberData> {
     if (!phoneNumber) {
         return {
             hashedNumber: 'anonymous',
@@ -78,8 +77,10 @@ export function processPhoneNumber(phoneNumber: string | null): PhoneNumberData 
     // Clean the number
     const cleaned = phoneNumber.replace(/\D/g, '');
 
-    // Generate full hash for storage (this is what we store in DB as unique ID)
-    const hashedNumber = crc32(phoneNumber);
+    // Generate full hash for storage using HMAC-SHA256
+    // This is cryptographically secure and prevents rainbow table attacks
+    const fullHash = await hmacHash(phoneNumber, secret);
+    const hashedNumber = fullHash.substring(0, 16); // Use first 64 bits (16 hex chars)
 
     // Handle different phone number formats for display
     if (cleaned.length >= 10) {
@@ -89,21 +90,23 @@ export function processPhoneNumber(phoneNumber: string | null): PhoneNumberData 
         const remainingDigits = last10.substring(3); // Last 7 digits
 
         // Hash just the last 7 digits for display
-        const remainingHash = crc32(remainingDigits).substring(0, 4).toUpperCase();
+        const remainingHash = await hmacHash(remainingDigits, secret);
+        const displayHash = remainingHash.substring(0, 4).toUpperCase();
 
         return {
             hashedNumber,
-            displayFormat: `(${areaCode}) ${remainingHash}`,
+            displayFormat: `(${areaCode}) ${displayHash}`,
             areaCode,
         };
     }
 
     // For shorter numbers, hash the whole thing
     if (cleaned.length >= 7) {
-        const shortHash = crc32(cleaned).substring(0, 6).toUpperCase();
+        const shortHash = await hmacHash(cleaned, secret);
+        const displayHash = shortHash.substring(0, 6).toUpperCase();
         return {
             hashedNumber,
-            displayFormat: `${shortHash}`,
+            displayFormat: `${displayHash}`,
         };
     }
 

@@ -5,6 +5,7 @@ interface Env {
     ASSETS: Fetcher;
     WORKER_URL?: string;
     TWILIO_AUTH_TOKEN?: string;
+    PHONE_HASH_SECRET: string;
 }
 
 export default {
@@ -119,8 +120,8 @@ async function handleTwilioVoiceWebhook(request: Request, env: Env): Promise<Res
         const fromState = formData.get('FromState') as string;
         const fromCountry = formData.get('FromCountry') as string;
 
-        // Process phone number for privacy
-        const phoneData = processPhoneNumber(from);
+        // Process phone number for privacy using HMAC with secret key
+        const phoneData = await processPhoneNumber(from, env.PHONE_HASH_SECRET);
 
         // Record call start in database with hashed phone number
         await env.DB.prepare(`
