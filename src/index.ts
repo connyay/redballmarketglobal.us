@@ -1,9 +1,10 @@
-import { processPhoneNumber } from './utils';
+import { processPhoneNumber, validateTwilioSignature } from './utils';
 
 interface Env {
     DB: D1Database;
     ASSETS: Fetcher;
     WORKER_URL?: string;
+    TWILIO_AUTH_TOKEN?: string;
 }
 
 export default {
@@ -97,6 +98,34 @@ async function handleTwilioVoiceWebhook(request: Request, env: Env): Promise<Res
     try {
         // Parse Twilio's form data
         const formData = await request.formData();
+
+        // Validate Twilio signature if auth token is configured
+        if (env.TWILIO_AUTH_TOKEN) {
+            const signature = request.headers.get('X-Twilio-Signature');
+            if (!signature) {
+                console.error('Missing X-Twilio-Signature header');
+                return new Response('Unauthorized', { status: 401 });
+            }
+
+            // Convert FormData to params object
+            const params: Record<string, string> = {};
+            for (const [key, value] of formData.entries()) {
+                params[key] = value.toString();
+            }
+
+            const isValid = await validateTwilioSignature(
+                signature,
+                request.url,
+                params,
+                env.TWILIO_AUTH_TOKEN
+            );
+
+            if (!isValid) {
+                console.error('Invalid Twilio signature');
+                return new Response('Unauthorized', { status: 401 });
+            }
+        }
+
         const callSid = formData.get('CallSid') as string;
         const from = formData.get('From') as string;
         const to = formData.get('To') as string;
@@ -168,6 +197,34 @@ async function handleTwilioStatusCallback(request: Request, env: Env): Promise<R
     try {
         // Parse Twilio's form data
         const formData = await request.formData();
+
+        // Validate Twilio signature if auth token is configured
+        if (env.TWILIO_AUTH_TOKEN) {
+            const signature = request.headers.get('X-Twilio-Signature');
+            if (!signature) {
+                console.error('Missing X-Twilio-Signature header');
+                return new Response('Unauthorized', { status: 401 });
+            }
+
+            // Convert FormData to params object
+            const params: Record<string, string> = {};
+            for (const [key, value] of formData.entries()) {
+                params[key] = value.toString();
+            }
+
+            const isValid = await validateTwilioSignature(
+                signature,
+                request.url,
+                params,
+                env.TWILIO_AUTH_TOKEN
+            );
+
+            if (!isValid) {
+                console.error('Invalid Twilio signature');
+                return new Response('Unauthorized', { status: 401 });
+            }
+        }
+
         const callSid = formData.get('CallSid') as string;
         const callStatus = formData.get('CallStatus') as string;
         const callDuration = formData.get('CallDuration') as string;

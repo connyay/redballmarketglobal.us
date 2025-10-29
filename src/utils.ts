@@ -1,3 +1,42 @@
+// Twilio signature validation
+export async function validateTwilioSignature(
+    signature: string,
+    url: string,
+    params: Record<string, string>,
+    authToken: string
+): Promise<boolean> {
+    // 1. Start with the full URL
+    let data = url;
+
+    // 2. Sort parameters alphabetically and append to URL
+    const sortedKeys = Object.keys(params).sort();
+    for (const key of sortedKeys) {
+        data += key + params[key];
+    }
+
+    // 3. Compute HMAC-SHA1 with auth token as key
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(authToken);
+    const messageData = encoder.encode(data);
+
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign']
+    );
+
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+
+    // 4. Base64 encode the result
+    const signatureArray = new Uint8Array(signatureBuffer);
+    const base64Signature = btoa(String.fromCharCode(...signatureArray));
+
+    // 5. Compare with provided signature
+    return base64Signature === signature;
+}
+
 // Simple CRC32 implementation for phone number hashing
 function crc32(str: string): string {
     let crc = 0 ^ (-1);

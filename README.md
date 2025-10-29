@@ -106,6 +106,9 @@ npm run deploy
 # Apply migrations to production
 npm run predeploy
 
+# Set Twilio Auth Token for request validation (recommended)
+wrangler secret put TWILIO_AUTH_TOKEN
+
 # (Optional) Set worker URL if needed for MP3 file
 wrangler secret put WORKER_URL
 ```
@@ -199,10 +202,11 @@ npm run cf-typegen   # Generate TypeScript types
 
 ## Security & Privacy
 
-- Phone numbers are hashed with CRC32 before storage
-- No PII is stored in plain text
-- Geographic data from Twilio is preserved for analytics
-- Suitable for GDPR/CCPA compliance
+- **Request Validation**: Twilio webhook requests are validated using HMAC-SHA1 signatures (when `TWILIO_AUTH_TOKEN` is set)
+- **Phone Number Privacy**: Phone numbers are hashed with CRC32 before storage
+- **No PII**: No personally identifiable information is stored in plain text
+- **Geographic Data**: City/state/country from Twilio is preserved for analytics
+- **GDPR/CCPA**: Suitable for compliance with privacy regulations
 - See [PRIVACY.md](PRIVACY.md) for details
 
 ## License
