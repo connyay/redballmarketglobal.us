@@ -46,7 +46,7 @@ export default {
 async function handleAnalyticsRequest(env: Env): Promise<Response> {
     try {
         // Fetch all analytics in parallel
-        const [longestHold, mostCalls, totalTime, geoLeader, recentCalls] = await Promise.all([
+        const [longestHold, mostCalls, totalTime, geoLeader, recentCalls, activeCalls] = await Promise.all([
             env.DB.prepare(`SELECT * FROM longest_single_hold LIMIT 1`).first(),
             env.DB.prepare(`SELECT * FROM most_calls LIMIT 1`).first(),
             env.DB.prepare(`SELECT * FROM most_time_overall LIMIT 1`).first(),
@@ -56,7 +56,8 @@ async function handleAnalyticsRequest(env: Env): Promise<Response> {
                 WHERE status = 'completed'
                 ORDER BY start_time DESC
                 LIMIT 10
-            `).all()
+            `).all(),
+            env.DB.prepare(`SELECT * FROM active_calls`).all()
         ]);
 
         return new Response(JSON.stringify({
@@ -64,7 +65,8 @@ async function handleAnalyticsRequest(env: Env): Promise<Response> {
             mostCalls,
             totalTime,
             geoLeader,
-            recentCalls: recentCalls.results
+            recentCalls: recentCalls.results,
+            activeCalls: activeCalls.results
         }), {
             headers: {
                 'Content-Type': 'application/json',

@@ -5,11 +5,14 @@ const TWILIO_PHONE_NUMBER = '+1-912-912-7264'; // 912-912-RBMG
 function formatDuration(seconds) {
     if (!seconds || seconds === 0) return '--:--';
 
-    const hours = Math.floor(seconds / 3600);
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
 
-    if (hours > 0) {
+    if (days > 0) {
+        return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
         return `${hours}h ${minutes}m ${secs}s`;
     } else if (minutes > 0) {
         return `${minutes}m ${secs}s`;
@@ -60,6 +63,24 @@ async function fetchAnalytics() {
             document.getElementById('geoLeader').textContent = `${data.geoLeader.state || data.geoLeader.country || 'Unknown'}`;
             document.getElementById('geoLeaderDetail').textContent =
                 `${data.geoLeader.total_calls} calls, ${formatDuration(data.geoLeader.total_duration_seconds)} total`;
+        }
+
+        // Update active callers
+        if (data.activeCalls && data.activeCalls.length > 0) {
+            document.getElementById('activeCount').textContent = data.activeCalls.length;
+            const activeList = document.getElementById('activeCallersList');
+            activeList.innerHTML = data.activeCalls.map(call => `
+                <div class="active-caller-item">
+                    <div class="active-caller-info">
+                        <div class="active-caller-number">${formatPhoneNumber(call.from_number_display, 'Unknown')}</div>
+                        <div class="active-caller-location">${call.city || 'Unknown'}, ${call.state || ''} ${call.country || ''}</div>
+                    </div>
+                    <div class="active-caller-duration">${formatDuration(call.current_duration_seconds)}</div>
+                </div>
+            `).join('');
+        } else {
+            document.getElementById('activeCount').textContent = '0';
+            document.getElementById('activeCallersList').innerHTML = '';
         }
 
         // Update recent calls
