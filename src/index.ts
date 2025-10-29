@@ -44,33 +44,19 @@ export default {
 // Handle analytics request
 async function handleAnalyticsRequest(env: Env): Promise<Response> {
     try {
-        // Fetch longest single hold
-        const longestHold = await env.DB.prepare(`
-            SELECT * FROM longest_single_hold LIMIT 1
-        `).first();
-
-        // Fetch most persistent caller
-        const mostCalls = await env.DB.prepare(`
-            SELECT * FROM most_calls LIMIT 1
-        `).first();
-
-        // Fetch total time champion
-        const totalTime = await env.DB.prepare(`
-            SELECT * FROM most_time_overall LIMIT 1
-        `).first();
-
-        // Fetch geographic leader
-        const geoLeader = await env.DB.prepare(`
-            SELECT * FROM geographic_stats LIMIT 1
-        `).first();
-
-        // Fetch recent calls
-        const recentCalls = await env.DB.prepare(`
-            SELECT * FROM calls
-            WHERE status = 'completed'
-            ORDER BY start_time DESC
-            LIMIT 10
-        `).all();
+        // Fetch all analytics in parallel
+        const [longestHold, mostCalls, totalTime, geoLeader, recentCalls] = await Promise.all([
+            env.DB.prepare(`SELECT * FROM longest_single_hold LIMIT 1`).first(),
+            env.DB.prepare(`SELECT * FROM most_calls LIMIT 1`).first(),
+            env.DB.prepare(`SELECT * FROM most_time_overall LIMIT 1`).first(),
+            env.DB.prepare(`SELECT * FROM geographic_stats LIMIT 1`).first(),
+            env.DB.prepare(`
+                SELECT * FROM calls
+                WHERE status = 'completed'
+                ORDER BY start_time DESC
+                LIMIT 10
+            `).all()
+        ]);
 
         return new Response(JSON.stringify({
             longestHold,
