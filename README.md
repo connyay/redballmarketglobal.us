@@ -2,8 +2,6 @@
 
 A fictional company website with an infinite hold music phone line, powered by Cloudflare Workers, D1 Database, and Twilio. Features privacy-preserving call analytics with CRC32 hashed phone numbers.
 
-![RBMG Website](https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/cb7cb0a9-6102-4822-633c-b76b7bb25900/public)
-
 ## What is this?
 
 This is a parody project that creates a professional-looking corporate website for the fictional "Red Ball Market Global" company (based on The Chair Company on HBO). When visitors call the phone number, they're greeted with a corporate hold message and infinite hold music. The system tracks all calls with privacy-preserving analytics.
