@@ -106,7 +106,7 @@ async function fetchAnalytics() {
 document.addEventListener('DOMContentLoaded', () => {
     // Set phone number
     const phoneLink = document.getElementById('phoneNumber');
-    phoneLink.textContent = '(912) 912-7264';
+    phoneLink.textContent = '(912) 912-RBMG';
     phoneLink.href = `tel:${TWILIO_PHONE_NUMBER}`;
 
     // Load analytics

@@ -155,7 +155,7 @@ async function handleTwilioVoiceWebhook(request: Request, env: Env): Promise<Res
         const workerUrl = env.WORKER_URL || request.url.split('/twilio')[0];
         const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="joey" language="en-US">
+    <Say voice="man" language="en-US">
         Thank you for calling Red Ball Market Global.
         Please hold for the next available agent.
     </Say>
