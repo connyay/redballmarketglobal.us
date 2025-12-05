@@ -220,6 +220,8 @@ npm run cf-typegen   # Generate TypeScript types
 - **Cloudflare D1**: Free tier (5GB storage, 5M reads/day)
 - **Twilio**: ~$1/month for phone number + per-minute charges for calls
 
+The twilio costs will soon bankrupt me. [I gotta figure out how to make money on this. It’s simply too good.](https://www.youtube.com/watch?v=1B_uPF0rCls)
+
 ## Security & Privacy
 
 - **Request Validation**: Twilio webhook requests are validated using HMAC-SHA1 signatures (when `TWILIO_AUTH_TOKEN` is set)
