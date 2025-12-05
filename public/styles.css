@@ -447,6 +447,18 @@ body {
     margin-top: 0.5rem;
 }
 
+.disclaimer a {
+    color: #a8c5c8;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(168, 197, 200, 0.4);
+    transition: all 0.2s ease;
+}
+
+.disclaimer a:hover {
+    color: #fff;
+    border-bottom-color: #fff;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .navbar {

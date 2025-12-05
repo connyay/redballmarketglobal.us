@@ -58,11 +58,11 @@ async function fetchAnalytics() {
                 `${formatPhoneNumber(data.totalTime.from_number_display)} - ${data.totalTime.total_calls} calls`;
         }
 
-        // Update geographic leader
-        if (data.geoLeader) {
-            document.getElementById('geoLeader').textContent = `${data.geoLeader.state || data.geoLeader.country || 'Unknown'}`;
-            document.getElementById('geoLeaderDetail').textContent =
-                `${data.geoLeader.total_calls} calls, ${formatDuration(data.geoLeader.total_duration_seconds)} total`;
+        // Update all time total
+        if (data.allTimeTotal) {
+            document.getElementById('allTimeTotal').textContent = formatDuration(data.allTimeTotal.total_duration_seconds);
+            document.getElementById('allTimeTotalDetail').textContent =
+                `${data.allTimeTotal.total_calls} calls total`;
         }
 
         // Update active callers

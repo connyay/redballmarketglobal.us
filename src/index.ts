@@ -46,27 +46,33 @@ export default {
 async function handleAnalyticsRequest(env: Env): Promise<Response> {
     try {
         // Fetch all analytics in parallel
-        const [longestHold, mostCalls, totalTime, geoLeader, recentCalls, activeCalls] = await Promise.all([
+        const [longestHold, mostCalls, totalTime, recentCalls, activeCalls, allTimeTotal] = await Promise.all([
             env.DB.prepare(`SELECT * FROM longest_single_hold LIMIT 1`).first(),
             env.DB.prepare(`SELECT * FROM most_calls LIMIT 1`).first(),
             env.DB.prepare(`SELECT * FROM most_time_overall LIMIT 1`).first(),
-            env.DB.prepare(`SELECT * FROM geographic_stats LIMIT 1`).first(),
             env.DB.prepare(`
                 SELECT * FROM calls
                 WHERE status = 'completed'
                 ORDER BY start_time DESC
                 LIMIT 10
             `).all(),
-            env.DB.prepare(`SELECT * FROM active_calls`).all()
+            env.DB.prepare(`SELECT * FROM active_calls`).all(),
+            env.DB.prepare(`
+                SELECT
+                    SUM(duration_seconds) as total_duration_seconds,
+                    COUNT(*) as total_calls
+                FROM calls
+                WHERE status = 'completed' AND duration_seconds IS NOT NULL
+            `).first()
         ]);
 
         return new Response(JSON.stringify({
             longestHold,
             mostCalls,
             totalTime,
-            geoLeader,
             recentCalls: recentCalls.results,
-            activeCalls: activeCalls.results
+            activeCalls: activeCalls.results,
+            allTimeTotal
         }), {
             headers: {
                 'Content-Type': 'application/json',
@@ -115,8 +121,8 @@ async function handleTwilioVoiceWebhook(request: Request, env: Env): Promise<Res
             }
         }
 
-        const callSid = formData.get('CallSid') as string;
         const from = formData.get('From') as string;
+        const callSid = formData.get('CallSid') as string;
         const to = formData.get('To') as string;
         const fromCity = formData.get('FromCity') as string;
         const fromState = formData.get('FromState') as string;
@@ -124,6 +130,27 @@ async function handleTwilioVoiceWebhook(request: Request, env: Env): Promise<Res
 
         // Process phone number for privacy using HMAC with secret key
         const phoneData = await processPhoneNumber(from, env.PHONE_HASH_SECRET);
+
+        // Prevent abuse - limit to 3 calls per 2 minutes from the same number
+        const recentCallsResult = await env.DB.prepare(`
+            SELECT COUNT(*) as call_count
+            FROM calls
+            WHERE from_number = ?
+            AND start_time > datetime('now', '-120 seconds')
+        `).bind(phoneData.hashedNumber).first<{ call_count: number }>();
+
+        const recentCallCount = recentCallsResult?.call_count ?? 0;
+        if (recentCallCount >= 3) {
+            return new Response(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Reject />
+</Response>`, {
+                headers: {
+                    'Content-Type': 'text/xml',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        }
 
         // Record call start in database with hashed phone number
         await env.DB.prepare(`

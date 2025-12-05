@@ -4,7 +4,7 @@
 	"private": true,
 	"devDependencies": {
 		"typescript": "5.8.3",
-		"wrangler": "^4.45.1"
+		"wrangler": "^4.53.0"
 	},
 	"scripts": {
 		"cf-typegen": "wrangler types",
