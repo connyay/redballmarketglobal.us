@@ -131,16 +131,26 @@ async function handleTwilioVoiceWebhook(request: Request, env: Env): Promise<Res
         // Process phone number for privacy using HMAC with secret key
         const phoneData = await processPhoneNumber(from, env.PHONE_HASH_SECRET);
 
-        // Prevent abuse - limit to 3 calls per 2 minutes from the same number
-        const recentCallsResult = await env.DB.prepare(`
-            SELECT COUNT(*) as call_count
-            FROM calls
-            WHERE from_number = ?
-            AND start_time > datetime('now', '-120 seconds')
-        `).bind(phoneData.hashedNumber).first<{ call_count: number }>();
+        // Prevent abuse - limit to 3 calls per 2 minutes AND 20 calls per day
+        const [recentCallsResult, dailyCallsResult] = await Promise.all([
+            env.DB.prepare(`
+                SELECT COUNT(*) as call_count
+                FROM calls
+                WHERE from_number = ?
+                AND start_time > datetime('now', '-120 seconds')
+            `).bind(phoneData.hashedNumber).first<{ call_count: number }>(),
+            env.DB.prepare(`
+                SELECT COUNT(*) as call_count
+                FROM calls
+                WHERE from_number = ?
+                AND start_time > datetime('now', '-24 hours')
+            `).bind(phoneData.hashedNumber).first<{ call_count: number }>()
+        ]);
 
         const recentCallCount = recentCallsResult?.call_count ?? 0;
-        if (recentCallCount >= 3) {
+        const dailyCallCount = dailyCallsResult?.call_count ?? 0;
+
+        if (recentCallCount >= 3 || dailyCallCount >= 20) {
             return new Response(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Reject />
